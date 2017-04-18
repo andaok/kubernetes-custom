@@ -1,0 +1,183 @@
+1.生成根证书
+# openssl genrsa -out ca.key 2048
+# openssl req -x509 -new -nodes -key ca.key -subj "/CN=cluster.local" -days 5000 -out ca.crt
+
+2.签署apiserver证书
+# vim master_ssl.cnf
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[req_distinguished_name]
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+[alt_names]
+DNS.1 = kubernetes
+DNS.2 = kubernetes.default
+DNS.3 = kubernetes.default.svc
+DNS.4 = kubernetes.default.svc.cluster.local
+DNS.5 = k8smaster
+IP.1 = 10.254.0.1
+IP.2 = 192.168.1.100
+
+基于master_ssl.cnf签署apiserver相关的证书
+# openssl genrsa -out apiserver.key 2048
+# openssl req -new -key apiserver.key -out apiserver.csr -subj "/CN=k8smaster" -config master_ssl.cnf
+# openssl x509 -req -in apiserver.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out apiserver.crt -days 5000 -extensions v3_req -extfile master_ssl.cnf
+
+copy apiserver.key,apiserver.crt,ca.crt 到对应的目录/var/run/kubernetes/,并修改权限
+# chown kube:kube /var/run/kubernetes/*
+
+3.(可选配置,一般cs和apiserver不在同一台机器上的时候用到)签署kube-controller-manager和scheduler的相关证书
+# openssl genrsa -out cs_client.key 2048
+# openssl req -new -key cs_client.key -out cs_client.csr -subj "/CN=k8smaster"
+# openssl x509 -req -in cs_client.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out cs_client.crt -days 5000
+
+4.签署node证书
+# vim node_ssl.cnf
+[req]
+req_extensions = v3_req
+distinguished_name = req_distinguished_name
+[req_distinguished_name]
+[ v3_req ]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+[alt_names]
+IP.1 = 192.168.1.1 #这里的是NODE节点IP，多个节点填多个即可
+IP.2 = 192.168.1.2
+
+基于node_ssl.cnf签署node相关的证书
+# openssl genrsa -out node01.key 2048
+# openssl req -new -key node01.key -out node01.csr -subj "/CN=node01" -config node_ssl.cnf
+# openssl x509 -req -in node01.csr -CA ca.crt -CAkey ca.key -CAcreateserial -out node01.crt -days 365 -extensions v3_req -extfile node_ssl.cnf
+
+将证书生成好后，copy ca.crt,node01.crt,node01.key到node01节点上，并修改权限
+# chown kube:kube /var/run/kubernetes/*
+
+5.修改master上的对应配置文件
+
+# 修改apiserver
+# vim /etc/kubernetes/apiserver
+KUBE_API_ADDRESS="--insecure-bind-address=0.0.0.0"
+KUBE_API_PORT="--secure-port=6443 --port=8080"
+KUBELET_PORT="--kubelet-port=10250"
+KUBE_ETCD_SERVERS="--etcd-servers=http://k8smaster:2379"
+KUBE_SERVICE_ADDRESSES="--service-cluster-ip-range=10.254.0.0/16"
+KUBE_ADMISSION_CONTROL="--admission-control=NamespaceLifecycle,NamespaceExists,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota"
+KUBE_API_ARGS="--public_address_override=192.168.1.100 --tls-cert-file=/var/run/kubernetes/apiserver.crt --tls-private-key-file=/var/run/kubernetes/apiserver.key --client-ca-file=/var/run/kubernetes/ca.crt --service-account-key-file=/var/run/kubernetes/apiserver.key"
+
+# 修改全局配置文件config
+# vim /etc/kubernetes/config
+KUBE_LOGTOSTDERR="--logtostderr=true"
+KUBE_LOG_LEVEL="--v=0"
+KUBE_ALLOW_PRIV="--allow-privileged=false"
+KUBE_MASTER="--master=http://192.168.1.100:8080"  #这里如果改成https://192.168.1.100:6443 则是让controller-manager和scheduler也使用HTTPS认证，否则就是使用默认的HTTP认证
+
+# 修改controller-manager配置文件
+# vim /etc/kubernetes/controller-manager
+KUBE_CONTROLLER_MANAGER_ARGS="--service-account-private-key-file=/var/run/kubernetes/apiserver.key --root-ca-file=/var/run/kubernetes/ca.crt"
+
+(可选步骤)如果想让cs也使用https认证，那么需要进行如下步骤
+
+# 添加读取cs证书的yaml文件
+# vim /etc/kubernetes/cm-kubeconfig.yaml
+apiVersion: v1
+kind: Config
+clusters:
+- name: local
+  cluster:
+    certificate-authority: /var/run/kubernetes/ca.crt
+users:
+- name: controllermanager
+  user:
+    client-certificate: /var/run/kubernetes/cs_client.crt
+    client-key: /var/run/kubernetes/cs_client.key
+contexts:
+- context:
+    cluster: local
+    user: controllermanager
+  name: kubelet-context
+current-context: kubelet-context
+
+# 修改controller-manager的配置文件，添加kubeconfig路径
+# vim /etc/kubernetes/controller-manager
+KUBE_CONTROLLER_MANAGER_ARGS="--service-account-private-key-file=/var/run/kubernetes/apiserver.key --root-ca-file=/var/run/kubernetes/ca.crt --kubeconfig=/etc/kubernetes/cm-kubeconfig.yaml"
+
+# 修改scheduler的配置文件，添加kubeconfig路径
+# vim /etc/kubernetes/scheduler
+KUBE_SCHEDULER_ARGS="--kubeconfig=/etc/kubernetes/cm-kubeconfig.yaml"
+
+6.修改节点上的对应配置文件
+
+# 修改全局配置文件config
+# vim /etc/kubernetes/config
+KUBE_LOGTOSTDERR="--logtostderr=true"
+KUBE_LOG_LEVEL="--v=0"
+KUBE_ALLOW_PRIV="--allow-privileged=false"
+KUBE_MASTER="--master=https://192.168.1.100:6443"
+
+# 修改kubelet配置文件，注意小心，一定要将认证方式改成https哟，笔者在这里弱智了好几次
+# vim /etc/kubernetes/kubelet
+KUBELET_ADDRESS="--address=0.0.0.0"
+KUBELET_PORT="--port=10250"
+KUBELET_HOSTNAME="--hostname-override=node01"
+KUBELET_API_SERVER="--api-servers=https://192.168.1.100:6443"
+KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=registry.access.redhat.com/rhel7/pod-infrastructure:latest"
+KUBELET_ARGS="--cluster-dns=10.254.0.253 --cluster-domain=cluster.local --tls-cert-file=/var/run/kubernetes/node01.crt --tls-private-key-file=/var/run/kubernetes/node01.key --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml"
+
+# 修改proxy配置文件
+# vim /etc/kubernetes/proxy
+KUBE_PROXY_ARGS="--kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml"
+
+# 添加读取证书的yaml文件
+# vim /etc/kubernetes/worker-kubeconfig.yaml
+apiVersion: v1
+kind: Config
+users:
+- name: kubelet
+  user:
+    client-certificate: /var/run/kubernetes/node01.crt
+    client-key: /var/run/kubernetes/node01.key
+clusters:
+- name: local
+  cluster:
+    server: https://192.168.1.100:6443
+    certificate-authority: /var/run/kubernetes/ca.crt
+contexts:
+- context:
+    cluster: local
+    user: kubelet
+  name: kubelet-context
+current-context: kubelet-context
+
+7.最后一步，就是重启服务啦，然后检测下看成功没，如果没有看到报错
+# systemctl restart kube-apiserver kube-controller-manager kube-scheduler etcd
+# tail -f /var/log/messages
+NodeController detected that some Nodes are Ready. Exiting master disruption mode
+
+# kubectl get nodes
+[root@k8smaster cert]# kubectl get nodes
+NAME      STATUS    AGE
+node01    Ready     6d
+node02    Ready     6d
+
+至此就算是完成啦，如果在配置的过程中，发现报错，多检查修改组件配置的地方，多半是粗心大意，修改错啦，只要前面的证书没有配置错误，后面就基本上没有问题啦
+
+
+最后列出所有的证书列表
+-rw-r--r--. 1 root root 1204 Mar 20 09:53 apiserver.crt
+-rw-r--r--. 1 root root 1127 Mar 20 09:53 apiserver.csr
+-rw-r--r--. 1 root root 1675 Mar 20 09:53 apiserver.key
+-rw-r--r--. 1 root root 1107 Mar 20 09:52 ca.crt
+-rw-r--r--. 1 root root 1675 Mar 20 09:52 ca.key
+-rw-r--r--. 1 root root   17 Mar 20 10:02 ca.srl
+-rw-r--r--. 1 root root  418 Mar 20 09:52 master_ssl.cnf
+-rw-r--r--. 1 root root 1054 Mar 20 09:54 node01.crt
+-rw-r--r--. 1 root root  972 Mar 20 09:54 node01.csr
+-rw-r--r--. 1 root root 1675 Mar 20 09:54 node01.key
+-rw-r--r--. 1 root root 1054 Mar 20 10:02 node02.crt
+-rw-r--r--. 1 root root  972 Mar 20 10:01 node02.csr
+-rw-r--r--. 1 root root 1675 Mar 20 10:01 node02.key
+-rw-r--r--. 1 root root  277 Mar 20 09:54 node_ssl.cnf

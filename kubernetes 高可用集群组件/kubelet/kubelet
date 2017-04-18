@@ -1,0 +1,26 @@
+#!/bin/bash
+/usr/bin/docker run \
+  --net=host \
+  --pid=host \
+  --privileged \
+  --name=kubelet \
+  --restart=on-failure:5 \
+  --memory=512M \
+  --cpu-shares=100 \
+  -v /dev:/dev:rw \
+  -v /etc/cni:/etc/cni:ro \
+  -v /opt/cni:/opt/cni:ro \
+  -v /etc/ssl:/etc/ssl:ro \
+  -v /etc/resolv.conf:/etc/resolv.conf \
+  -v /etc/pki/tls:/etc/pki/tls:ro \
+  -v /etc/pki/ca-trust:/etc/pki/ca-trust:ro \
+  -v /sys:/sys:ro \
+  -v /var/lib/docker:/var/lib/docker:rw \
+  -v /var/log:/var/log:rw \
+  -v /var/lib/kubelet:/var/lib/kubelet:shared \
+  -v /var/lib/cni:/var/lib/cni:shared \
+  -v /var/run:/var/run:rw \
+  -v /etc/kubernetes:/etc/kubernetes:ro \
+  quay.io/coreos/hyperkube:v1.6.1_coreos.0 \
+  ./hyperkube kubelet \
+  "$@"

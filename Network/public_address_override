@@ -1,0 +1,1 @@
+可以在apiserver启动时通过--public_address_override参数传入，但如果没有传入该参数，apiserver会使用其所在机器上的第一个非回环网卡地址作为该共有IP地址以保证集群的可用性

@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: limit-range-test
+spec:
+  limits:
+  - type: Pod
+  #here is pod's limits range
+    max:
+      cpu: 1
+      memory: 1Gi
+  #here is pod's requests range
+    min:
+      cpu: 0.5
+      memory: 216Mi
+  #pod中所有容器的limits总和与requests总和的比例不能超过这里定义的
+    maxLimitRequestRatio:
+      cpu: 3
+      memory: 2
+  - type: Container
+  #here is containers's limits range
+    max:
+      cpu: 1
+      memory: 1Gi
+  #here is containers's requests range
+    min:
+      cpu: 0.5
+      memory: 216Mi
+  #容器内部定义的limits与requests的比例不能超过这里定义的
+    maxLimitRequestRatio:
+      cpu: 5
+      memory: 4
+    default:
+      cpu: 0.5
+      memory: 512Mi

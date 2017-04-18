@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: webapp-config
+data:
+  index.html: |
+    This is test page for webapp on node01 and node02!
+    what the fucking day!
+    Maybe this method is best?

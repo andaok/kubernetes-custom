@@ -1,0 +1,62 @@
+1.CentOS上要確認上要確認核心版本，指令：
+```bash
+[root@localhost ~]# uname -r
+3.10.0-327.36.3.el7.x86_64
+```
+
+2.然後這是現在我的CentOS 7版本：
+```bash
+[root@localhost ~]# cat /etc/redhat-release
+CentOS Linux release 7.2.1511 (Core)
+```
+
+3.OVS目前還是需要自己編譯，所以先安裝toolchain
+```bash
+[root@localhost ~]# yum groupinstall "Development Tools"
+[root@localhost ~]# yum install openssl-devel wget kernel-devel
+```
+
+4.下載ovs
+```bash
+[ovs@localhost ~]$ wget http://openvswitch.org/releases/openvswitch-2.5.1.tar.gz
+```
+
+5.解压缩
+```bash
+[root@localhost ~]$ tar xzvf openvswitch-2.5.1.tar.gz
+```
+
+6.等等要打包成rpm方式，先建個資料夾並且把tar檔複製過去：
+```bash
+[ovs@localhost ~]$ mkdir -p ~/rpmbuild/SOURCES
+[ovs@localhost ~]$ cp openvswitch-2.5.1.tar.gz ~/rpmbuild/SOURCES/
+```
+
+7.修改spec文件
+```bash
+[ovs@localhost ~]$ sed 's/openvswitch-kmod, //g' openvswitch-2.5.1/rhel/openvswitch.spec > openvswitch-2.5.1/rhel/openvswitch_no_kmod.spec
+```
+
+8.打包
+```bash
+[ovs@localhost ~]$ rpmbuild -bb --nocheck ~/openvswitch-2.5.1/rhel/openvswitch_no_kmod.spec
+```
+
+9.确认
+```bash
+[ovs@localhost ~]$ ls /root/rpmbuild/RPMS/x86_64/
+openvswitch-2.5.1-1.x86_64.rpm  openvswitch-debuginfo-2.5.1-1.x86_64.rpm
+```
+
+10.安装
+```bash
+[root@localhost ~]# yum localinstall /home/ovs/rpmbuild/RPMS/x86_64/openvswitch-2.5.1-1.x86_64.rpm
+```
+
+11.确认
+```bash
+[root@localhost ~]# ovs-vsctl -V
+ovs-vsctl (Open vSwitch) 2.5.1
+Compiled Nov  4 2016 14:06:47
+DB Schema 7.12.1
+```

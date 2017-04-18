@@ -1,0 +1,13 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: test-ingress
+spec:
+  rules:
+  - host: webapp.com
+    http:
+      paths:
+      - backend:
+          serviceName: webapp
+          servicePort: 8081
+        path: /

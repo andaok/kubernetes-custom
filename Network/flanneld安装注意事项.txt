@@ -1,0 +1,19 @@
+
+配置文件/etc/sysconfig/flanneld修改注意事项
+
+# Flanneld configuration options
+
+# etcd url location.  Point this to the server where etcd runs
+FLANNEL_ETCD_ENDPOINTS="http://192.168.1.100:2379"
+
+# etcd config key.  This is the configuration key that flannel queries
+# For address range assignment
+#FLANNEL_ETCD_PREFIX="/atomic.io/network"
+FLANNEL_ETCD_KEY="/coreos.com/network"
+
+# Any additional options that you want to pass
+# 这里一定要指定和etcd server同网段的网卡
+FLANNEL_OPTIONS="--iface=enp0s8
+
+
+另：flanneld是最简单的，直接使用yum安装，然后修改配置文件即可，所有使用etcd server的node节点会自动获取网络配置
