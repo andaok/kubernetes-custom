@@ -1,0 +1,15 @@
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: elasticsearch-ingress
+  namespace: kube-system
+spec:
+  rules:
+  - host: elasticsearch.com
+    http:
+      paths:
+      - backend:
+          serviceName: elasticsearch-logging
+          servicePort: 9200
+        path: /
+
