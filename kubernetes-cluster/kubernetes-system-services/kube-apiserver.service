@@ -1,0 +1,45 @@
+[Unit]
+Description=Kubernetes API Server
+After=network.target
+After=etcd.service
+
+[Service]
+EnvironmentFile=-/etc/kubernetes/apiserver
+ExecStart=/usr/local/bin/kube-apiserver \
+  --admission-control=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeLabel,DefaultStorageClass,ResourceQuota,DefaultTolerationSeconds,NodeRestriction \
+  --advertise-address=192.168.1.10 \
+  --bind-address=192.168.1.10 \
+  --insecure-bind-address=127.0.0.1 \
+  --service-cluster-ip-range=10.254.0.0/16 \
+  --service-node-port-range=30000-32000 \
+  --allow-privileged=true \
+  --apiserver-count=3 \
+  --audit-log-maxage=30 \
+  --audit-log-maxbackup=3 \
+  --audit-log-maxsize=100 \
+  --audit-log-path=/var/log/kubernetes/audit.log \
+  --authorization-mode=Node,RBAC \
+  --enable-swagger-ui=true \
+  --v=0 \
+  --event-ttl=1h \
+  --secure-port=6443 \
+  --insecure-port=8080 \
+  --etcd-servers=https://192.168.1.10:2379,https://192.168.1.20:2379,https://192.168.1.30:2379 \
+  --etcd-cafile=/etc/etcd/ssl/ca.pem \
+  --etcd-certfile=/etc/etcd/ssl/etcd.pem \
+  --etcd-keyfile=/etc/etcd/ssl/etcd-key.pem \
+  --storage-backend=etcd3 \
+  --tls-cert-file=/etc/kubernetes/ssl/kube-apiserver.pem \
+  --tls-private-key-file=/etc/kubernetes/ssl/kube-apiserver-key.pem \
+  --client-ca-file=/etc/kubernetes/ssl/ca.pem \
+  --service-account-key-file=/etc/kubernetes/ssl/kube-apiserver-key.pem \
+  --token-auth-file=/etc/kubernetes/known_token/token.csv \
+  --kubelet-https=true \
+  --endpoint-reconciler-type=lease \
+  --anonymous-auth=False
+Restart=on-failure
+Type=notify
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

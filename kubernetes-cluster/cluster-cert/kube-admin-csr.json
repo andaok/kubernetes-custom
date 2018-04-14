@@ -1,0 +1,19 @@
+{
+  "CN": "kube-admin",
+  "hosts": [
+    "192.168.1.100"
+  ],
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "CN",
+      "ST": "Wuhan",
+      "L": "Hubei",
+      "O": "system:masters",
+      "OU": "System"
+    }
+  ]
+}

@@ -1,0 +1,31 @@
+[Unit]
+Description=Kubernetes Kubelet
+After=docker.service
+Requires=docker.service
+
+[Service]
+WorkingDirectory=/var/lib/kubelet
+ExecStart=/usr/local/bin/kubelet \
+  --cgroup-driver=cgroupfs \
+  --address=192.168.1.40 \
+  --hostname-override=k8snode1 \
+  --pod-infra-container-image=gcr.io/google_containers/pause-amd64:3.1 \
+  --experimental-bootstrap-kubeconfig=/etc/kubernetes/bootstrap.kubeconfig \
+  --kubeconfig=/etc/kubernetes/kubelet.kubeconfig \
+  --cert-dir=/etc/kubernetes/ssl \
+  --cluster_dns=10.254.0.2 \
+  --cluster_domain=cluster.local. \
+  --hairpin-mode promiscuous-bridge \
+  --allow-privileged=true \
+  --serialize-image-pulls=false \
+  --alsologtostderr=true \
+  --fail-swap-on=false \
+  --max-pods=512 \
+  --v=2 \
+  --network-plugin=cni \
+  --cni-conf-dir=/etc/cni/net.d
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
