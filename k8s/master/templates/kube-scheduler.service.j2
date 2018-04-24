@@ -1,0 +1,12 @@
+[Unit]
+Description=kubernetes Scheduler
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+Requires=kube-apiserver.service
+After=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/bin/kube-scheduler \
+        --master=https://{{groups["k8s-master"][0]}}:6443 \
+        --kubeconfig=/etc/kubernetes/kubeconfig-master
+Restart=always
+RestartSec=10

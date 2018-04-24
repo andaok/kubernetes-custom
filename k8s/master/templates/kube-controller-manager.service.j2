@@ -1,0 +1,16 @@
+[Unit]
+Description=kubernetes Controller Manager
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+Requires=kube-apiserver.service
+After=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/bin/kube-controller-manager \
+        --master={{ groups["k8s-master"][0] }}:8080 \
+        --master=https://{{ groups["k8s-master"][0] }}:6443 \
+        --service-account-private-key-file=/opt/k8s/cert/server.key \
+        --root-ca-file=/opt/k8s/cert/ca.crt \
+        --kubeconfig=/etc/kubernetes/kubeconfig-master
+        --logtostderr=true
+Restart=always
+RestartSec=10

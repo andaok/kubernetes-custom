@@ -1,0 +1,66 @@
+- name: "Clean cert files"
+  file: path=/opt/k8s/cert state=absent
+
+- name: "Mkdir /opt/k8s"
+  file:
+   path: /opt/k8s/cert
+   state: directory
+
+- name: "Mkdir /etc/kubernetes"
+  file:
+    path: /etc/kubernetes
+    state: directory
+
+- name: "Mkdir /var/log/kubernetes"
+  file:
+    path: /var/log/kubernetes/nginx
+    state: directory
+
+- name: "Sync CA files to every node"
+  synchronize: src=/opt/k8s/cert/ dest=/opt/k8s/cert/
+  delegate_to: "{{groups['k8s-master'][0]}}"
+
+- name: "Create cert and key file (for kube-proxy and kubelet)"
+  shell: "openssl genrsa -out kubelet_client.key 2048 && \
+          openssl req -new -key kubelet_client.key -subj '/CN={{ansible_ssh_host}}' -out kubelet_client.csr && \
+          openssl x509 -req -in kubelet_client.csr -CA ca.crt -CAkey ca.key  -CAcreateserial -out kubelet_client.crt -days 5000"
+  args:
+    chdir: /opt/k8s/cert/
+  when: "'k8s-workers' in group_names"
+
+- name: "Upload kubeconfig-kubelet to every worker node"
+  copy:
+    src: kubeconfig-kubelet
+    dest: /etc/kubernetes/kubeconfig-kubelet
+  when: "'k8s-workers' in group_names"
+
+
+- name: "Install node require bin packages"
+  unarchive:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: "kubelet.tar.gz", dest: "/usr/bin/" }
+    - { src: "kube-proxy.tar.gz", dest: "/usr/bin/" }
+
+
+- name: "Install node systemd service file"
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: "kubelet.service.j2", dest: "/etc/systemd/system/kubelet.service" }
+    - { src: "kube-proxy.service.j2", dest: "/etc/systemd/system/kube-proxy.service" }
+  become: yes
+
+- name: "Restart all node service"
+  systemd:
+    name: "{{ item }}"
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - kubelet
+    - kube-proxy
+  ignore_errors: true
+  when: "'k8s-workers' in group_names"

@@ -1,0 +1,28 @@
+Description=Kubernetes API Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+Requires=etcd.service
+After=etcd.service
+
+[Service]
+#EnvironmentFile=/etc/network-environment
+ExecStart=/usr/bin/kube-apiserver \
+        --admission-control=NamespaceLifecycle,LimitRanger,SecurityContextDeny,ServiceAccount,ResourceQuota \
+        --runtime-config=api/v1 \
+        --allow-privileged=true \
+        --insecure-bind-address=127.0.0.1 \
+        --insecure-port=8080 \
+        --kubelet-https=true \
+        --secure-port=6443 \
+        --apiserver-count=3 \
+        --bind-address={{groups["k8s-master"][0]}} \
+        --client-ca-file=/opt/k8s/cert/ca.crt \
+        --tls-private-key-file=/opt/k8s/cert/server.key \
+        --service-account-key-file=/opt/k8s/cert/server.key \
+        --tls-cert-file=/opt/k8s/cert/server.crt \
+        --service-cluster-ip-range=10.200.0.0/16 \
+        --etcd-servers={% for host in groups["etcd-servers"] %}http://{{ host }}:4001,{% endfor %} \
+        --logtostderr=true \
+        --cors-allowed-origins='.*'
+
+Restart=always
+RestartSec=10

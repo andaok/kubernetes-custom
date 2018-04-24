@@ -1,0 +1,22 @@
+- name: "Install etcd require bin packages"
+  unarchive:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+  with_items:
+    - { src: "etcd.tar.gz", dest: "/usr/bin/" }
+    - { src: "etcdctl.tar.gz", dest: "/usr/bin/" }
+
+- name: "Install etcd service"
+  template:
+    src: etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+  become: yes
+  when: "'etcd-servers' in group_names"
+
+- name: "Start etcd service"
+  systemd:
+    name: etcd
+    state: restarted
+    enabled: yes
+    daemon_reload: yes
+  when: "'etcd-servers' in group_names"

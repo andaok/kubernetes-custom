@@ -1,0 +1,14 @@
+[Unit]
+Description=Kubernetes DNS Server
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=kube-apiserver.service
+Requires=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/bin/kube-dns \
+        --dns-port=53 \
+        --domain=cluster.local \
+        --kube-master-url=https://{{groups["k8s-master"][0]}}:6443 \
+       --kubecfg-file=/etc/kubernetes/kubeconfig-master
+Restart=on-failure
+RestartSec=10
