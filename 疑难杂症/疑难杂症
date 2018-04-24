@@ -1,2 +1,6 @@
 删除删不掉的pod的时候
 kubectl delete pods kube-dns-v11-6s8n6 --namespace=kube-system --force --grace-period=0
+
+print certificate content
+openssl x509 -in cert.pem -noout -text
+
