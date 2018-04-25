@@ -16,9 +16,14 @@
     path: /var/log/kubernetes/nginx
     state: directory
 
+- name: "remove docker_gwbridge"
+  shell: "docker network rm docker_gwbridge"
+  ignore_errors: true
+
 - name: "Sync CA files to every node"
   synchronize: src=/opt/k8s/cert/ dest=/opt/k8s/cert/
   delegate_to: "{{groups['k8s-master'][0]}}"
+  when: "'k8s-workers' in group_names"
 
 - name: "Create cert and key file (for kube-proxy and kubelet)"
   shell: "openssl genrsa -out kubelet_client.key 2048 && \
@@ -51,7 +56,12 @@
   with_items:
     - { src: "kubelet.service.j2", dest: "/etc/systemd/system/kubelet.service" }
     - { src: "kube-proxy.service.j2", dest: "/etc/systemd/system/kube-proxy.service" }
+    - { src: "flanneld.service.j2", dest: "/etc/systemd/system/flanneld.service" }
+    - { src: "docker.service.j2", dest: "/etc/systemd/system/docker.service" }
   become: yes
+
+- name: "Set flanneld subnet"
+  shell: "iptables -t nat -F && ifconfig docker0 down &&  brctl delbr docker0"
 
 - name: "Restart all node service"
   systemd:
@@ -62,5 +72,16 @@
   with_items:
     - kubelet
     - kube-proxy
+    - flanneld
+    - docker
   ignore_errors: true
   when: "'k8s-workers' in group_names"
+
+
+- name: "Upload pause image"
+  copy:
+    src: pause.tar
+    dest: /opt/k8s/pause.tar
+
+- name: "Load pause image"
+  shell: "docker load -i /opt/k8s/pause.tar"

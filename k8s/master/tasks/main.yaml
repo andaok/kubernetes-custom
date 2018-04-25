@@ -16,6 +16,10 @@
     path: /var/log/kubernetes/nginx
     state: directory
 
+- name: "remove docker_gwbridge"
+  shell: "docker network rm docker_gwbridge"
+  ignore_errors: true
+
 - name: "Create CA cert and key file"
   args:
    chdir: /opt/k8s/cert/
@@ -26,6 +30,7 @@
 - name: "Sync CA files to every node"
   synchronize: src=/opt/k8s/cert/ dest=/opt/k8s/cert/
   delegate_to: "{{groups['k8s-master'][0]}}"
+  when: "'k8s-master' in group_names"
 
 - name: "Upload ssl config file"
   template: src=master_ssl.conf.j2 dest=/opt/k8s/master_ssl.conf
@@ -61,7 +66,7 @@
     - { src: "kube-controller-manager.tar.gz", dest: "/usr/bin/" }
     - { src: "kube-scheduler.tar.gz", dest: "/usr/bin/" }
     - { src: "kube-dns.tar.gz", dest: "/usr/bin/" }
-    - { src: "kubectl.tar.gz", dest: "/usr/bin/"}
+    - { src: "kubectl.tar.gz", dest: "/usr/bin/" }
 
 - name: "Upload kubeconfig-master to master node"
   copy:
@@ -79,8 +84,13 @@
     - { src: "kube-controller-manager.service.j2", dest: "/etc/systemd/system/kube-controller-manager.service" }
     - { src: "kube-scheduler.service.j2", dest: "/etc/systemd/system/kube-scheduler.service" }
     - { src: "kube-dns.service.j2 ", dest: "/etc/systemd/system/kube-dns.service" }
+    - { src: "flanneld.service.j2", dest: "/etc/systemd/system/flanneld.service" }
+    - { src: "docker.service.j2", dest: "/etc/systemd/system/docker.service" }
   become: yes
   when: "'k8s-master' in group_names"
+
+- name: "Set flanneld subnet"
+  shell: "iptables -t nat -F && ifconfig docker0 down &&  brctl delbr docker0"
 
 - name: "Restart all master service"
   systemd:
@@ -93,5 +103,7 @@
     - kube-controller-manager
     - kube-scheduler
     - kube-dns
+    - flanneld
+    - docker
   ignore_errors: true
   when: "'k8s-master' in group_names"
