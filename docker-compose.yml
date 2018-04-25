@@ -1,0 +1,47 @@
+version: '3'
+services:
+  jenkins:
+    container_name: jenkins
+    image: jenkinsci/blueocean:1.5.0
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - /data/jenkins/jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+  sonarqube:
+    container_name: sonarqube
+    image: sonarqube:7.1
+    ports:
+      - "9000:9000"
+      - "9092:9092"
+    volumes:
+      - /data/sonarqube/sonarqube_conf:/opt/sonarqube/conf
+      - /data/sonarqube/sonarqube_data:/opt/sonarqube/data
+      - /data/sonarqube/extensions:/opt/sonarqube/extensions
+      - /data/sonarqube/sonarqube_bundled-plugins:/opt/sonarqube/lib/bundled-plugins
+    environment:
+      - SONARQUBE_JDBC_URL=jdbc:mysql://127.0.0.1:3306/sonar?useUnicode=true&characterEncoding=utf8&rewriteBatchedStatements=true&useConfigs=maxPerformance
+      - SONARQUBE_JDBC_USERNAME=sonar
+      - SONARQUBE_JDBC_PASSWORD=sonar
+    restart: always
+  mysql:
+    container_name: mysql
+    image: mysql:5.7
+    ports:
+      - "3306:3306"
+    volumes:
+      - /data/mysql/mysql_data:/var/lib/mysql
+    environment:
+      - MYSQL_DATABASE=sonar
+      - MYSQL_USER=sonar
+      - MYSQL_PASSWORD=sonar
+      - MYSQL_ROOT_PASSWORD=supersecret
+      restart: always
+
+networks:
+  default:
+    driver: bridge
+
+# fadcfeac5a75ce9d588e662b760f3cb20d59b014
