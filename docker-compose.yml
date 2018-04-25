@@ -38,7 +38,7 @@ services:
       - MYSQL_USER=sonar
       - MYSQL_PASSWORD=sonar
       - MYSQL_ROOT_PASSWORD=supersecret
-      restart: always
+    restart: always
 
 networks:
   default:
