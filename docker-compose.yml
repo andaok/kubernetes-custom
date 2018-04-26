@@ -1,18 +1,18 @@
 version: '3'
 services:
   jenkins:
+    user: root
     container_name: jenkins
     image: jenkinsci/blueocean:1.5.0
+    privileged: true
     ports:
       - "8080:8080"
       - "50000:50000"
     volumes:
       - /data/jenkins/jenkins_home:/var/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
+      - /usr/local/bin/docker:/usr/local/bin/docker
     restart: always
-    depends_on:
-      - nexus
-      - sonarqube
   sonarqube:
     container_name: sonarqube
     image: sonarqube:7.1
@@ -29,8 +29,6 @@ services:
       - SONARQUBE_JDBC_USERNAME=sonar
       - SONARQUBE_JDBC_PASSWORD=sonar
     restart: always
-    depends_on:
-      - mysql
   mysql:
     container_name: mysql
     image: mysql:5.7
@@ -50,12 +48,11 @@ services:
     ports:
       - "8081:8081"
     volumes:
-      - /data/nexus/nexus-data:nexus-data
+      - /data/nexus/nexus-data:/nexus-data
     restart: always
-
 
 networks:
   default:
     driver: bridge
 
-# 1f8caa9db30f191622b357378f0d23b54aa642e0
+# fadcfeac5a75ce9d588e662b760f3cb20d59b014
