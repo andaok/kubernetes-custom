@@ -50,13 +50,13 @@ def keypress(key):
     win32api.keybd_event(key,0,0,0)
     win32api.keybd_event(key,0,win32con.KEYEVENTF_KEYUP,0)
 
-def mousepress():
+def mouseclick():
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
     win32api.mouse_event(win32con.MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
 
 if __name__ == "__main__":
     while True:
         time.sleep(300)
-        mousepress()
+        mouseclick()
         keypress(144)
 ```
