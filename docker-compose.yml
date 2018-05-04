@@ -9,9 +9,12 @@ services:
       - "8080:8080"
       - "50000:50000"
     volumes:
-      - /data/jenkins/jenkins_home:/var/jenkins_home
+      - /data/jenkins/jenkins_home:/data/jenkins/jenkins_home
       - /var/run/docker.sock:/var/run/docker.sock
       - /usr/local/bin/docker:/usr/local/bin/docker
+      - ./localtime:/etc/localtime
+    environment:
+      - JENKINS_HOME=/data/jenkins/jenkins_home
     restart: always
   sonarqube:
     container_name: sonarqube
