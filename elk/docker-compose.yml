@@ -1,0 +1,27 @@
+version: '3'
+services:
+  elasticsearch:
+    image: elasticsearch
+    restart: always
+    ulimits:
+      nproc: 2048
+      nofile: 65536
+      memlock: -1
+    volumes:
+      - /data/elasticsearch/config:/usr/share/elasticsearch/config
+      - /data/elasticsearch/data:/var/data/elasticsearch
+      - /data/elasticsearch/log:/var/log/eelasticsearch
+      - /data/elasticsearch/plugins:/usr/share/elasticsearch/plugins
+    ports:
+      "9200:9200"
+  fluentd:
+    build: ./fluentd
+    volumes:
+      - /data/fluentd/conf:/fluentd/etc
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+  kibana:
+    image: kibana
+    ports:
+      - "5601:5601"
