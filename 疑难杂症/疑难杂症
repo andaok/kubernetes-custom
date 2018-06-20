@@ -4,3 +4,4 @@ kubectl delete pods kube-dns-v11-6s8n6 --namespace=kube-system --force --grace-p
 print certificate content
 openssl x509 -in cert.pem -noout -text
 
+nsenter --target 查到的进程id --mount --pid --uts --net --ipc
